@@ -1,0 +1,20 @@
+.pio
+
+# MAC stuff
+*/.DS_Store
+.DS_Store
+
+*bak
+*cache
+*lib
+
+__pycache__/
+
+*backups/
+*.kicad_prl
+
+*/exports/*
+kicad-5
+
+python-fseq/
+NOTAS
