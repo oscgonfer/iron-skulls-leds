@@ -1,4 +1,4 @@
-from threading import Thread, Event, Lock, currentThread, Condition
+from threading import Thread, Event, Lock, current_thread
 from queue import Queue
 from config import *
 from tools import *
@@ -15,7 +15,6 @@ class FseqAnimator (Thread):
         self.queue = queue
         self.parent = parent
         self.event = Event()
-        self.condition = Condition()
         self.daemon = True
         self.t = None
         self.audio_stream = sd.InputStream()
@@ -27,7 +26,6 @@ class FseqAnimator (Thread):
 
         while not self.event.isSet():
             if not self.queue.empty():
-
                 animation = self.queue.get()
                 std_out (f'Received animation: {animation}', 'THREAD')
                 if '/' in animation:
@@ -39,11 +37,9 @@ class FseqAnimator (Thread):
                     animation_params = None
 
                 self.send_sacn(animation_name, animation_params)
-                # except Queue.Empty:
-                #     continue
-
-            # if animation is None:   # If you send `None`, the thread will exit.
-            #     return
+            else:
+                # We wait to avoid loading the cpu without need...
+                self.event.wait(timeout=(0.1))
 
     def join (self, timeout=None):
         self.event.set()
@@ -58,7 +54,7 @@ class FseqAnimator (Thread):
     def send_sacn (self, animation_name, animation_params):
         # if self.receive_messages:
 
-            t = currentThread()
+            t = current_thread()
             with print_lock:
                 # print ('[THREAD]:', t.getName(), "Received animation {}".format(animation_name))
                 # print ('[THREAD]:', t.getName(), "With parameter {}".format(animation_params))
@@ -93,10 +89,9 @@ class FseqAnimator (Thread):
                 prevt = time.monotonic_ns() - start_time
                 for frame_index in range(fseq.number_of_frames):
                     runt = time.monotonic_ns() - start_time
-                    # std_out(f'Animation run time (ms): {runt//1e6}', 'THREAD')
-                    # TODO Add multiple universes (splitting frame)
-                    frame = frame_to_tuple(fseq.get_frame(frame_index), fseq.channel_count_per_frame)
+                    std_out(f'Animation run time (ms): {runt//1e6}', 'DEBUG')
 
+                    frame = frame_to_tuple(fseq.get_frame(frame_index), fseq.channel_count_per_frame)
                     m = intensity_multiplier(ap['ti'], ap['wait'], ap['to'], runt//1e6, ap['max'])
 
                     if ap['audio']:
@@ -116,12 +111,14 @@ class FseqAnimator (Thread):
                     fm = tuple(max(0,round(x*m*a)) for x in frame)
 
                     for universe in range(RECEIVER_UNIVERSES):
-                        sender[universe+1].dmx_data = fm[universe*ANIMATION_CHANNEL_COUNT:(universe+1)*ANIMATION_CHANNEL_COUNT]
-                    # frame_index = (frame_index + 1) % fseq.number_of_frames
+                        frame2send = fm[universe*ANIMATION_CHANNEL_COUNT:(universe+1)*ANIMATION_CHANNEL_COUNT]
+                        if len(frame2send):
+                            sender[universe+1].dmx_data = frame2send
 
                     # TODO Check issue with timing. It is not true!!
                     dt = time.monotonic_ns() - runt - start_time
                     self.event.wait(timeout=(fseq.step_time_in_ms - dt//1e6)/1000)
+                    std_out(f'Elapsed time: {dt//1e6}', 'DEBUG')
 
             else:
 
@@ -152,10 +149,9 @@ class FseqAnimator (Thread):
                     fm = tuple(max(0,round(x*m*a)) for x in frame)
 
                     for universe in range(RECEIVER_UNIVERSES):
-                        sender[universe+1].dmx_data = fm[universe*ANIMATION_CHANNEL_COUNT:(universe+1)*ANIMATION_CHANNEL_COUNT]
-
-                    # TODO Add multiple universes (splitting frame)
-                    sender[1].dmx_data = fm
+                        frame2send = fm[universe*ANIMATION_CHANNEL_COUNT:(universe+1)*ANIMATION_CHANNEL_COUNT]
+                        if len(frame2send):
+                            sender[universe+1].dmx_data = frame2send
 
                     # TODO Check issue with timing. It is not true!!
                     dt = time.monotonic_ns() - runt - start_time

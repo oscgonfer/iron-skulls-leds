@@ -5,9 +5,11 @@ from sacn import sACNsender
 from config import *
 import numpy as np
 
-
 def std_out(msg, who):
-    print (f'[{who}]: {msg}')
+    if DEBUG:
+        print (f'[{who}]: {msg}')
+    elif who != 'DEBUG':
+        print (f'[{who}]: {msg}')
 
 def get_fseqs(FSEQ_DIR):
 

@@ -3,8 +3,8 @@ import numpy as np
 import time
 
 AUDIO_FRAMES = 1000
-TEST_TIME = 30
-a = sd.InputStream(extra_settings = sd.CoreAudioSettings(conversion_quality='min'))
+TEST_TIME = 300
+a = sd.InputStream()
 
 a.start()
 

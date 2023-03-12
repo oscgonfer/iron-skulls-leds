@@ -1,6 +1,7 @@
 from tools import *
 
 # Config
+DEBUG=True
 
 # FSEQ DIR
 FSEQ_DIR = ''
